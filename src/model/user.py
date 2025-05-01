@@ -1,6 +1,6 @@
 # src/models/user.py
 import uuid
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -24,6 +24,14 @@ class User(Base):
         String,
         nullable=False,
     )
+    full_name = Column(
+        String(50)
+    )
+    is_admin = Column(
+        Boolean, 
+        default=False
+    )
+
 
     # Quan hệ 1 user có nhiều transactions
     transactions = relationship(
