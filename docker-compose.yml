@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: pocket_ledger_mcrs
+    container_name: pocket_ledger_mcrs_app
     ports:
       - "5001:8001"
     volumes:
