@@ -2,6 +2,7 @@
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from src.utils.database import Base, engine, get_db
 from src.controller.transaction_controller import router as txn_router
 from src.controller.auth_controller import router as auth_router
@@ -12,6 +13,14 @@ Base.metadata.create_all(bind=engine)
 
 # 2. Khởi FastAPI app
 app = FastAPI(title="Pocket Ledger API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # hoặc ["*"] nếu bạn dev thoải mái
+    allow_credentials=True,
+    allow_methods=["*"],      # GET, POST, PATCH, DELETE…
+    allow_headers=["*"],      # Authorization, Content-Type…
+)
 
 # 3. Include các router
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
