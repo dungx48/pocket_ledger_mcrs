@@ -24,5 +24,5 @@ RUN pip install --upgrade pip \
 COPY . /app
 
 # 6. Expose port và CMD
-EXPOSE 8001
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]
+EXPOSE 5001
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "5001"]
