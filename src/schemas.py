@@ -5,33 +5,41 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Annotated
 import uuid
-import enum
 
 
-class CategoryType(str, enum.Enum):
-    INCOME = "income"
-    EXPENSE = "expense"
-
-
+# =========================
+# Category
+# =========================
 class CategoryBase(BaseModel):
-    id: Annotated[str, Field(..., min_length=2, max_length=6, description="Mã category, 2-6 ký tự")]
-    description: Annotated[str, Field(..., description="Mô tả chi tiết của category")]
-    type: Annotated[CategoryType, Field(..., description="Kiểu category: income hoặc expense")]
-
-
+    description: Annotated[str, Field(..., max_length=255, description="Mô tả chi tiết của category")]
+    key: Annotated[str, Field(..., min_length=1, max_length=10, description="Key category (tối đa 10 ký tự)")]
+    value: Annotated[str, Field(..., min_length=1, max_length=50, description="Value category (tối đa 50 ký tự)")]
+    is_active: Annotated[str, Field(..., max_length=5, description="Trạng thái hoạt động của category")]
+    table_name: Annotated[str, Field(..., max_length=50)]
+    field_name: Annotated[str, Field(..., max_length=50)]
+    
 class CategoryCreate(CategoryBase):
     pass
 
-
-class CategoryRead(CategoryBase):
+class CategoryUpdate(CategoryBase):
     model_config = {"from_attributes": True}
 
 
+class CategoryRead(CategoryBase):
+    id: Annotated[uuid.UUID, Field(..., description="UUID của category")]
+
+    model_config = {"from_attributes": True}
+
+
+# =========================
+# Transaction
+# =========================
 class TransactionBase(BaseModel):
+    category_key: Annotated[str, Field(..., description="key category liên kết")]
     amount: Annotated[float, Field(..., gt=0, description="Số tiền giao dịch, phải lớn hơn 0")]
     date: Annotated[date, Field(..., description="Ngày giao dịch")]
-    category_id: Annotated[str, Field(..., min_length=2, max_length=6, description="Mã category liên kết")]
     note: Annotated[Optional[str], Field(None, description="Ghi chú")]
+    transaction_type: Annotated[str, Field(..., max_length=10, description="Loại giao dịch: thu hoặc chi")]
 
     model_config = {"from_attributes": True}
 
@@ -39,13 +47,15 @@ class TransactionBase(BaseModel):
 class TransactionCreate(TransactionBase):
     pass
 
+
 class TransactionUpdate(BaseModel):
+    category_key: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
-    date:   Optional[date]  = None
-    category_id: Optional[str] = Field(None, min_length=2, max_length=6)
-    note:   Optional[str]  = None
+    date: Optional[date] = None
+    note: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
 
 class TransactionRead(TransactionBase):
     id: Annotated[uuid.UUID, Field(...)]
@@ -55,6 +65,9 @@ class TransactionRead(TransactionBase):
     model_config = {"from_attributes": True}
 
 
+# =========================
+# User
+# =========================
 class UserBase(BaseModel):
     username: Annotated[str, Field(..., min_length=2)]
 

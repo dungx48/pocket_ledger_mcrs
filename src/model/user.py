@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 from src.utils.database import Base
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "fact_users"
 
     id = Column(
         UUID(as_uuid=True),
@@ -30,12 +30,4 @@ class User(Base):
     is_admin = Column(
         Boolean, 
         default=False
-    )
-
-
-    # Quan hệ 1 user có nhiều transactions
-    transactions = relationship(
-        "Transaction", 
-        back_populates="owner",
-        cascade="all, delete-orphan"
     )

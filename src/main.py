@@ -7,12 +7,16 @@ from src.utils.database import Base, engine, get_db
 from src.controller.transaction_controller import router as txn_router
 from src.controller.auth_controller import router as auth_router
 from src.controller.user_controller import router as user_router
+from src.controller.category_controller import router as category_router
+from src.middleware.logging import SafeLoggingMiddleware
 
 # 1. Tạo tất cả bảng nếu chưa có
 Base.metadata.create_all(bind=engine)
 
 # 2. Khởi FastAPI app
 app = FastAPI(title="Pocket Ledger API")
+
+app.add_middleware(SafeLoggingMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +30,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(txn_router, prefix="/transactions", tags=["transactions"])
 app.include_router(user_router, prefix="/users", tags=["users"])
+app.include_router(category_router, prefix="/categories", tags=["categories"]) 
 
 # 4. Một route test để kiểm tra server đang chạy
 @app.get("/health")
