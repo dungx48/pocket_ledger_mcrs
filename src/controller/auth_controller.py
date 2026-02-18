@@ -16,6 +16,6 @@ def login(
     svc = AuthService(db)
     user = svc.authenticate(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect credentials")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect credentials")
     access_token = svc.create_access_token({"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
