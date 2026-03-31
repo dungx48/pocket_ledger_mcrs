@@ -1,9 +1,9 @@
 # src/schemas.py
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as date_type, datetime
 from pydantic import BaseModel, Field
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Union
 import uuid
 
 
@@ -37,7 +37,7 @@ class CategoryRead(CategoryBase):
 class TransactionBase(BaseModel):
     category_key: Annotated[str, Field(..., description="key category liên kết")]
     amount: Annotated[float, Field(..., gt=0, description="Số tiền giao dịch, phải lớn hơn 0")]
-    date: Annotated[date, Field(..., description="Ngày giao dịch")]
+    date: Annotated[date_type, Field(..., description="Ngày giao dịch")]
     note: Annotated[Optional[str], Field(None, description="Ghi chú")]
     transaction_type: Annotated[str, Field(..., max_length=10, description="Loại giao dịch: thu hoặc chi")]
 
@@ -51,8 +51,9 @@ class TransactionCreate(TransactionBase):
 class TransactionUpdate(BaseModel):
     category_key: Optional[str] = None
     amount: Optional[float] = Field(None, gt=0)
-    date: Optional[date] = None
+    date: Optional[date_type] = None
     note: Optional[str] = None
+    transaction_type: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
