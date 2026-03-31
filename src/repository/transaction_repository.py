@@ -12,7 +12,7 @@ class TransactionRepository:
         q = self.db.query(Transaction)
         if user_id is not None:
             q = q.filter(Transaction.user_id == user_id)
-        return q.offset(skip).limit(limit).all()
+        return q.order_by(Transaction.date.desc()).offset(skip).limit(limit).all()
 
     def get(self, txn_id: UUID):
         return self.db.query(Transaction).get(txn_id)
