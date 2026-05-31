@@ -1,5 +1,7 @@
 # src/service/transaction_service.py
 from uuid import UUID
+from datetime import date
+from typing import Optional
 from src.repository.transaction_repository import TransactionRepository
 from src.schemas import TransactionCreate
 from src.schemas import UserRead
@@ -8,10 +10,20 @@ class TransactionService:
     def __init__(self, repo: TransactionRepository):
         self.repo = repo
 
-    def list_transactions(self, skip: int, limit: int, current_user: UserRead):
+    def list_transactions(self, skip: int, limit: int, current_user: UserRead, date_from: Optional[date] = None, date_to: Optional[date] = None):
         if current_user.is_admin:
-            return self.repo.list(skip, limit)
-        return self.repo.list(skip, limit, user_id=current_user.id)
+            return self.repo.list(skip, limit, date_from=date_from, date_to=date_to)
+        return self.repo.list(skip, limit, user_id=current_user.id, date_from=date_from, date_to=date_to)
+
+    def monthly_summary(self, current_user: UserRead, date_from: Optional[date] = None, date_to: Optional[date] = None):
+        if current_user.is_admin:
+            return self.repo.monthly_summary(date_from=date_from, date_to=date_to)
+        return self.repo.monthly_summary(user_id=current_user.id, date_from=date_from, date_to=date_to)
+
+    def weekly_summary(self, current_user: UserRead, date_from: date, date_to: date):
+        if current_user.is_admin:
+            return self.repo.weekly_summary(date_from=date_from, date_to=date_to)
+        return self.repo.weekly_summary(date_from=date_from, date_to=date_to, user_id=current_user.id)
 
     def create_transaction(self, data: TransactionCreate, current_user: UserRead):
         return self.repo.create(data, user_id=current_user.id)

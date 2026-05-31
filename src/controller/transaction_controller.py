@@ -1,9 +1,17 @@
 # src/controller/transaction_controller.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from uuid import UUID
+from datetime import date
+from typing import Optional
 from sqlalchemy.orm import Session
 
-from src.schemas import TransactionRead, TransactionCreate, TransactionUpdate
+from src.schemas import (
+    TransactionRead,
+    TransactionCreate,
+    TransactionUpdate,
+    TransactionMonthlySummary,
+    TransactionWeeklySummary,
+)
 from src.repository.transaction_repository import TransactionRepository
 from src.service.transaction_service import TransactionService
 from src.utils.database import get_db
@@ -20,10 +28,35 @@ def get_txn_service(db: Session = Depends(get_db)):
 def list_txns(
     skip: int = 0,
     limit: int = 100,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     svc: TransactionService = Depends(get_txn_service),
     current_user=Depends(get_current_user),
 ):
-    return svc.list_transactions(skip, limit, current_user)
+    _validate_date_range(date_from, date_to)
+    return svc.list_transactions(skip, limit, current_user, date_from=date_from, date_to=date_to)
+
+
+@router.get("/summary/monthly", response_model=list[TransactionMonthlySummary])
+def monthly_summary(
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    svc: TransactionService = Depends(get_txn_service),
+    current_user=Depends(get_current_user),
+):
+    _validate_date_range(date_from, date_to)
+    return svc.monthly_summary(current_user, date_from=date_from, date_to=date_to)
+
+
+@router.get("/summary/weekly", response_model=list[TransactionWeeklySummary])
+def weekly_summary(
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    svc: TransactionService = Depends(get_txn_service),
+    current_user=Depends(get_current_user),
+):
+    _validate_date_range(date_from, date_to)
+    return svc.weekly_summary(current_user, date_from=date_from, date_to=date_to)
 
 
 @router.post("/", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)
@@ -58,3 +91,11 @@ def delete_txn(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction không tồn tại hoặc không có quyền")
     return deleted
+
+
+def _validate_date_range(date_from: Optional[date], date_to: Optional[date]):
+    if date_from is not None and date_to is not None and date_to < date_from:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="date_to must be greater than or equal to date_from",
+        )

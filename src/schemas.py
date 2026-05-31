@@ -2,9 +2,24 @@
 from __future__ import annotations
 
 from datetime import date as date_type, datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Annotated, Union
 import uuid
+
+
+INCOME_TRANSACTION_TYPE = "income"
+EXPENSE_TRANSACTION_TYPE = "expense"
+INCOME_TRANSACTION_VALUES = {"income", "1", "thu", "in"}
+EXPENSE_TRANSACTION_VALUES = {"expense", "2", "chi", "out"}
+
+
+def normalize_transaction_type(value: str | int | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in INCOME_TRANSACTION_VALUES:
+        return INCOME_TRANSACTION_TYPE
+    if normalized in EXPENSE_TRANSACTION_VALUES:
+        return EXPENSE_TRANSACTION_TYPE
+    raise ValueError("transaction_type must be income or expense")
 
 
 # =========================
@@ -43,6 +58,11 @@ class TransactionBase(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("transaction_type", mode="before")
+    @classmethod
+    def validate_transaction_type(cls, value):
+        return normalize_transaction_type(value)
+
 
 class TransactionCreate(TransactionBase):
     pass
@@ -57,6 +77,13 @@ class TransactionUpdate(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("transaction_type", mode="before")
+    @classmethod
+    def validate_transaction_type(cls, value):
+        if value is None:
+            return None
+        return normalize_transaction_type(value)
+
 
 class TransactionRead(TransactionBase):
     id: Annotated[uuid.UUID, Field(...)]
@@ -64,6 +91,21 @@ class TransactionRead(TransactionBase):
     created_at: Annotated[datetime, Field(...)]
 
     model_config = {"from_attributes": True}
+
+
+class TransactionMonthlySummary(BaseModel):
+    month: Annotated[str, Field(..., description="Thang tong hop, dinh dang YYYY-MM")]
+    expense: Annotated[float, Field(..., description="Tong tien chi trong thang")]
+    income: Annotated[float, Field(..., description="Tong tien thu trong thang")]
+    transaction_count: Annotated[int, Field(..., description="So giao dich trong thang")]
+
+
+class TransactionWeeklySummary(BaseModel):
+    week_start: Annotated[date_type, Field(..., description="Ngay bat dau tuan, inclusive")]
+    week_end: Annotated[date_type, Field(..., description="Ngay ket thuc tuan, inclusive")]
+    expense: Annotated[float, Field(..., description="Tong tien chi trong tuan")]
+    income: Annotated[float, Field(..., description="Tong tien thu trong tuan")]
+    transaction_count: Annotated[int, Field(..., description="So giao dich trong tuan")]
 
 
 # =========================
