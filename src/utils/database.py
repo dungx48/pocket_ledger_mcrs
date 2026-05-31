@@ -27,9 +27,14 @@ class PostgreDatabase:
             f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}"
             f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
         )
+        connect_args = {"sslmode": settings.DB_SSLMODE}
+        if settings.DB_SSLROOTCERT:
+            connect_args["sslrootcert"] = settings.DB_SSLROOTCERT
+
         self.engine = create_engine(
             url,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
         self.SessionLocal = sessionmaker(
             bind=self.engine,
