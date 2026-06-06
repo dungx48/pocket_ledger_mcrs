@@ -41,7 +41,7 @@ class CategoryUpdate(CategoryBase):
 
 
 class CategoryRead(CategoryBase):
-    id: Annotated[uuid.UUID, Field(..., description="UUID của category")]
+    id: Annotated[str, Field(..., description="Category ID")]
 
     model_config = {"from_attributes": True}
 

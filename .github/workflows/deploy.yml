@@ -32,7 +32,7 @@ jobs:
 
             git pull origin main
 
-            docker-compose down --volumes --remove-orphans
+            docker-compose down --remove-orphans
             docker-compose build --pull
             docker-compose up -d
           EOF
