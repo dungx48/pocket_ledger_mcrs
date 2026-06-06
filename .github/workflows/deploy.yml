@@ -1,4 +1,4 @@
-name: Deploy Docker‑Compose
+name: Deploy Docker Compose
 
 on:
   push:
@@ -12,21 +12,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Thiết lập SSH key
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Pull & Deploy trên server
+      - name: Pull and deploy on server
         run: |
-          ssh -o StrictHostKeyChecking=no \
+          ssh \
+            -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            -o ConnectTimeout=30 \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+
             cd ~/pocket_ledger_mcrs
 
             git pull origin main
 
             docker-compose down --volumes --remove-orphans
-            docker-compose build --no-cache
+            docker-compose build --pull
             docker-compose up -d
           EOF
