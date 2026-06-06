@@ -1,14 +1,21 @@
 # Backend Instructions
 
-Đây là project backend của Pocket Ledger.
+Day la project backend cua Pocket Ledger.
 
-Trước khi sửa các task liên quan đến frontend:
-- Luôn đọc tài liệu task trong `../docs`.
-- Nếu task liên quan màn hình thống kê giao dịch, đọc file:
-  `../docs/TASK_TRANSACTION_SUMMARY.md`
+Truoc khi sua cac task lien quan den frontend hoac data contract:
+- Luon doc tai lieu task trong `../docs`.
+- Neu task lien quan man hinh thong ke giao dich, doc `../docs/TASK_TRANSACTION_SUMMARY.md`.
+- Neu task lien quan tab thong ke/phan tich tieu dung hoac app shell, doc `../docs/TASK_ANALYTICS_APP_SHELL.md`.
 
-Nguyên tắc:
-- Ưu tiên filter/tổng hợp dữ liệu ở backend thay vì bắt frontend tải toàn bộ dữ liệu.
-- Giữ response cũ nếu có thể.
-- Nếu thêm endpoint mới, cần ghi rõ request params và response mẫu.
-- Nếu sửa endpoint cũ, cần đảm bảo không phá các màn hình khác.
+Nguyen tac:
+- Uu tien filter/tong hop du lieu o backend thay vi bat frontend tai toan bo du lieu.
+- Giu response cu neu co the.
+- Neu them endpoint moi, can ghi ro request params va response mau.
+- Neu sua endpoint cu, can dam bao khong pha cac man hinh khac.
+
+Analytics:
+- Cac endpoint analytics nam duoi `/transactions/analytics`.
+- Tat ca endpoint analytics can Bearer auth.
+- User thuong chi tong hop du lieu cua chinh minh; admin giu behavior rong hon hien co.
+- Filter analytics optional gom `transaction_type` va `category_key` khi endpoint co ho tro.
+- `category_key` trong analytics la filter optional; neu bo trong thi lay tat ca danh muc.

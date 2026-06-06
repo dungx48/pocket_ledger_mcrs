@@ -9,6 +9,9 @@ from src.schemas import (
     TransactionRead,
     TransactionCreate,
     TransactionUpdate,
+    TransactionAnalyticsByCategory,
+    TransactionAnalyticsOverview,
+    TransactionAnalyticsTimeseries,
     TransactionMonthlySummary,
     TransactionWeeklySummary,
 )
@@ -57,6 +60,79 @@ def weekly_summary(
 ):
     _validate_date_range(date_from, date_to)
     return svc.weekly_summary(current_user, date_from=date_from, date_to=date_to)
+
+
+@router.get("/analytics/overview", response_model=TransactionAnalyticsOverview)
+def analytics_overview(
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    transaction_type: Optional[str] = None,
+    category_key: Optional[str] = None,
+    svc: TransactionService = Depends(get_txn_service),
+    current_user=Depends(get_current_user),
+):
+    _validate_date_range(date_from, date_to)
+    try:
+        return svc.analytics_overview(
+            current_user,
+            date_from=date_from,
+            date_to=date_to,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/analytics/by-category", response_model=list[TransactionAnalyticsByCategory])
+def analytics_by_category(
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    transaction_type: Optional[str] = None,
+    category_key: Optional[str] = None,
+    svc: TransactionService = Depends(get_txn_service),
+    current_user=Depends(get_current_user),
+):
+    _validate_date_range(date_from, date_to)
+    try:
+        return svc.analytics_by_category(
+            current_user,
+            date_from=date_from,
+            date_to=date_to,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/analytics/timeseries", response_model=list[TransactionAnalyticsTimeseries])
+def analytics_timeseries(
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    group_by: str = "day",
+    transaction_type: Optional[str] = None,
+    category_key: Optional[str] = None,
+    svc: TransactionService = Depends(get_txn_service),
+    current_user=Depends(get_current_user),
+):
+    _validate_date_range(date_from, date_to)
+    if group_by not in {"day", "week", "month"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="group_by must be day, week, or month",
+        )
+    try:
+        return svc.analytics_timeseries(
+            current_user,
+            date_from=date_from,
+            date_to=date_to,
+            group_by=group_by,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)

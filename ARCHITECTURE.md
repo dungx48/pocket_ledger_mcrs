@@ -1,109 +1,170 @@
-# ARCHITECTURE
+# Backend Architecture
 
-## 1. Tổng quan
+Pocket Ledger backend follows a layered FastAPI architecture.
 
-Project theo mô hình phân lớp:
+## Layers
 
-- `controller`: nhận HTTP request/response.
-- `service`: xử lý nghiệp vụ.
-- `repository`: truy cập dữ liệu DB qua SQLAlchemy Session.
-- `model`: định nghĩa bảng DB.
-- `schemas`: contract request/response bằng Pydantic.
-- `utils`: cấu hình, database singleton, security (JWT + password hash).
-- `middleware`: logging request.
+- `controller`: HTTP route definitions and dependency wiring.
+- `service`: business logic and permission checks.
+- `repository`: SQLAlchemy database queries.
+- `model`: ORM table definitions.
+- `schemas.py`: Pydantic request/response schemas.
+- `utils`: config, database and security helpers.
+- `middleware`: request logging.
 
-Entry point là `src/main.py`.
+Entry point: `src/main.py`.
 
-## 2. Thành phần runtime
+## Runtime Components
 
-- FastAPI app: khai báo router, middleware, CORS.
-- SQLAlchemy engine/session: khởi tạo trong `src/utils/database.py`.
-- PostgreSQL: lưu dữ liệu users, transactions, categories.
-- JWT auth:
-- login qua `POST /auth/token`
-- các API cần xác thực dùng `Depends(get_current_user)`
+- FastAPI app in `src/main.py`.
+- SQLAlchemy engine/session in `src/utils/database.py`.
+- PostgreSQL stores users, transactions and categories.
+- JWT auth via `src/utils/security.py`.
+- `SafeLoggingMiddleware` logs request timing.
 
-## 3. Luồng request
+## Request Flow
 
-Luồng chuẩn:
+```text
+HTTP request
+  -> FastAPI router/controller
+  -> service
+  -> repository
+  -> SQLAlchemy Session
+  -> PostgreSQL
+  -> Pydantic response
+```
 
-1. HTTP request đi vào `FastAPI`.
-2. `SafeLoggingMiddleware` ghi log method/path/status/duration.
-3. Router ở `controller` nhận request.
-4. Router gọi `service` (hoặc repository trực tiếp ở một số controller).
-5. `service` thực thi nghiệp vụ, phân quyền.
-6. `repository` thao tác DB qua `Session`.
-7. Kết quả trả về, FastAPI serialize theo `schemas`.
+## Auth And Permission
 
-## 4. Auth & phân quyền
+- Login endpoint: `POST /auth/token`.
+- Protected endpoints use `Depends(get_current_user)`.
+- Token payload contains `sub=username` and `exp`.
+- `/users` endpoints require admin.
+- `/transactions` endpoints:
+  - Admin can access all transactions according to current behavior.
+  - Normal user can access only own transactions.
+- Analytics endpoints use the same transaction visibility rules.
 
-### 4.1 Xác thực
+## Data Model
 
-- `AuthService.authenticate(username, password)` kiểm tra user + bcrypt hash.
-- Token JWT tạo bằng `HS256`, secret lấy từ `JWT_SECRET`.
-- Payload chứa `sub=username`, `exp`.
+### `fact_users`
 
-### 4.2 Kiểm tra user hiện tại
-
-- `get_current_user`:
-- đọc bearer token từ `Authorization`
-- decode JWT
-- lấy user từ DB theo username
-- fail thì trả `401 Unauthorized`
-
-### 4.3 Phân quyền
-
-- `users` API yêu cầu admin (`ensure_admin` trong `user_controller`).
-- `transactions`:
-- admin xem/sửa/xóa tất cả.
-- user thường chỉ thao tác transaction của chính mình.
-- `categories`: hiện tại cho phép đọc danh sách.
-
-## 5. Dữ liệu & schema
-
-### 5.1 Bảng chính
-
-- `fact_users` (`src/model/user.py`)
-- `id` UUID
-- `username` unique
+- `id`
+- `username`
 - `hashed_password`
-- `full_name`
+- `fullname`
 - `is_admin`
 
-- `fact_transactions` (`src/model/transaction.py`)
-- `id` UUID, default `uuid_generate_v4()`
-- `user_id` UUID
+### `fact_transactions`
+
+- `id`
+- `user_id`
 - `category_key`
-- `amount` numeric(14,2), check `amount > 0`
-- `date`, `note`, `transaction_type`, `created_at`
-- index: `(user_id, date)`, `(category_key)`
+- `amount`
+- `date`
+- `note`
+- `transaction_type`
+- `created_at`
 
-- `dim_categories` (`src/model/category.py`)
-- `id`, `description`, `key`, `value`, `is_active`, `table_name`, `field_name`
+Indexes:
 
-### 5.2 Pydantic schemas
+- `(user_id, date)`
+- `category_key`
 
-Nằm trong `src/schemas.py`:
+### `dim_categories`
 
-- Category: `CategoryCreate/Read/Update`
-- Transaction: `TransactionCreate/Read/Update`
-- User: `UserCreate/Read/Update`
+- `id`
+- `description`
+- `key`
+- `value`
+- `is_active`
+- `table_name`
+- `field_name`
 
-## 6. Dependency wiring
+## Transaction Controller
 
-- DB Session qua `Depends(get_db)` (mỗi request 1 session, tự close).
-- Transaction service qua `get_txn_service`.
-- Category service qua `get_category_service`.
-- Current user qua `Depends(get_current_user)`.
+File: `src/controller/transaction_controller.py`.
 
-## 7. Middleware & cross-cutting concerns
+Current endpoint groups:
 
-- `SafeLoggingMiddleware`: log request timing.
-- CORS: currently `allow_origins=["*"]`, `allow_methods=["*"]`, `allow_headers=["*"]`.
+- Transaction list and CRUD.
+- Monthly and weekly summary.
+- Analytics overview, by-category and timeseries.
 
-## 8. Điểm cần lưu ý kỹ thuật
+## Transaction Analytics
 
-- `Base.metadata.create_all(bind=engine)` tự tạo bảng khi app start.
-- Không có migration tool (Alembic) trong repo hiện tại.
-- Local run port là `8001`, Docker run port là `5001`.
-- DB cần extension `uuid-ossp` để `uuid_generate_v4()` hoạt động.
+Analytics endpoints are under:
+
+```text
+/transactions/analytics
+```
+
+Endpoints:
+
+- `GET /transactions/analytics/overview`
+- `GET /transactions/analytics/by-category`
+- `GET /transactions/analytics/timeseries`
+
+Common validation:
+
+- `date_from` and `date_to` are required.
+- `date_to >= date_from`.
+- Invalid date range returns `400`.
+- Invalid `transaction_type` returns `400`.
+
+Supported filters:
+
+- `transaction_type`: optional `income` or `expense`.
+- `category_key`: optional category filter.
+
+Timeseries supports:
+
+- `group_by=day`
+- `group_by=week`
+- `group_by=month`
+
+## Transaction Repository
+
+File: `src/repository/transaction_repository.py`.
+
+Important methods:
+
+- `list(...)`
+- `monthly_summary(...)`
+- `weekly_summary(...)`
+- `analytics_overview(...)`
+- `analytics_by_category(...)`
+- `analytics_timeseries(...)`
+
+Shared read filters are applied through `_apply_read_filters(...)`:
+
+- `user_id`
+- `date_from`
+- `date_to`
+- `transaction_type`
+- `category_key`
+
+## Transaction Schemas
+
+File: `src/schemas.py`.
+
+Analytics response schemas:
+
+- `TransactionAnalyticsOverview`
+- `TransactionAnalyticsByCategory`
+- `TransactionAnalyticsTimeseries`
+
+Canonical transaction types:
+
+- `income`
+- `expense`
+
+Legacy values are normalized for compatibility where supported.
+
+## Technical Notes
+
+- `Base.metadata.create_all(bind=engine)` is still used at startup.
+- No Alembic migration is configured yet.
+- CORS is currently permissive and should be restricted before production hardening.
+- Local direct run port is `8001`.
+- Docker exposes `5001`.

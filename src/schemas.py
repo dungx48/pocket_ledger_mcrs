@@ -7,10 +7,10 @@ from typing import Optional, Annotated, Union
 import uuid
 
 
-INCOME_TRANSACTION_TYPE = "income"
-EXPENSE_TRANSACTION_TYPE = "expense"
-INCOME_TRANSACTION_VALUES = {"income", "1", "thu", "in"}
-EXPENSE_TRANSACTION_VALUES = {"expense", "2", "chi", "out"}
+INCOME_TRANSACTION_TYPE = "1"
+EXPENSE_TRANSACTION_TYPE = "2"
+INCOME_TRANSACTION_VALUES = {"1"}
+EXPENSE_TRANSACTION_VALUES = {"2"}
 
 
 def normalize_transaction_type(value: str | int | None) -> str:
@@ -19,7 +19,7 @@ def normalize_transaction_type(value: str | int | None) -> str:
         return INCOME_TRANSACTION_TYPE
     if normalized in EXPENSE_TRANSACTION_VALUES:
         return EXPENSE_TRANSACTION_TYPE
-    raise ValueError("transaction_type must be income or expense")
+    raise ValueError("transaction_type must be 1 or 2")
 
 
 # =========================
@@ -106,6 +106,30 @@ class TransactionWeeklySummary(BaseModel):
     expense: Annotated[float, Field(..., description="Tong tien chi trong tuan")]
     income: Annotated[float, Field(..., description="Tong tien thu trong tuan")]
     transaction_count: Annotated[int, Field(..., description="So giao dich trong tuan")]
+
+
+class TransactionAnalyticsOverview(BaseModel):
+    date_from: Annotated[date_type, Field(..., description="Ngay bat dau khoang thong ke, inclusive")]
+    date_to: Annotated[date_type, Field(..., description="Ngay ket thuc khoang thong ke, inclusive")]
+    income: Annotated[float, Field(..., description="Tong tien thu trong khoang thoi gian")]
+    expense: Annotated[float, Field(..., description="Tong tien chi trong khoang thoi gian")]
+    balance: Annotated[float, Field(..., description="Thu nhap tru chi tieu")]
+    transaction_count: Annotated[int, Field(..., description="So giao dich trong khoang thoi gian")]
+
+
+class TransactionAnalyticsByCategory(BaseModel):
+    category_key: Annotated[str, Field(..., description="Key danh muc giao dich")]
+    amount: Annotated[float, Field(..., description="Tong tien cua danh muc")]
+    transaction_count: Annotated[int, Field(..., description="So giao dich cua danh muc")]
+    percentage: Annotated[float, Field(..., description="Ty le phan tram tren tong tien filter")]
+
+
+class TransactionAnalyticsTimeseries(BaseModel):
+    period: Annotated[str, Field(..., description="Ky thong ke theo group_by")]
+    income: Annotated[float, Field(..., description="Tong tien thu trong ky")]
+    expense: Annotated[float, Field(..., description="Tong tien chi trong ky")]
+    balance: Annotated[float, Field(..., description="Thu nhap tru chi tieu trong ky")]
+    transaction_count: Annotated[int, Field(..., description="So giao dich trong ky")]
 
 
 # =========================
