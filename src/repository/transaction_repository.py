@@ -89,12 +89,120 @@ class TransactionRepository:
 
         return list(bucket_by_start.values())
 
+    def analytics_overview(
+        self,
+        date_from: date,
+        date_to: date,
+        user_id: Optional[UUID] = None,
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        q = self.db.query(
+            self._expense_sum().label("expense"),
+            self._income_sum().label("income"),
+            func.count(Transaction.id).label("transaction_count"),
+        )
+        q = self._apply_read_filters(
+            q,
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+        row = q.one()
+        income = float(row.income or 0)
+        expense = float(row.expense or 0)
+
+        return {
+            "date_from": date_from,
+            "date_to": date_to,
+            "income": income,
+            "expense": expense,
+            "balance": income - expense,
+            "transaction_count": row.transaction_count or 0,
+        }
+
+    def analytics_by_category(
+        self,
+        date_from: date,
+        date_to: date,
+        user_id: Optional[UUID] = None,
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        amount_expr = func.coalesce(func.sum(Transaction.amount), 0)
+        q = self.db.query(
+            Transaction.category_key.label("category_key"),
+            amount_expr.label("amount"),
+            func.count(Transaction.id).label("transaction_count"),
+        )
+        q = self._apply_read_filters(
+            q,
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+        rows = q.group_by(Transaction.category_key).order_by(amount_expr.desc()).all()
+        total = sum(float(row.amount or 0) for row in rows)
+
+        return [
+            {
+                "category_key": row.category_key,
+                "amount": float(row.amount or 0),
+                "transaction_count": row.transaction_count or 0,
+                "percentage": round((float(row.amount or 0) / total) * 100, 2) if total else 0,
+            }
+            for row in rows
+        ]
+
+    def analytics_timeseries(
+        self,
+        date_from: date,
+        date_to: date,
+        user_id: Optional[UUID] = None,
+        group_by: str = "day",
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        period_expr = self._period_expression(group_by)
+        q = self.db.query(
+            period_expr.label("period"),
+            self._expense_sum().label("expense"),
+            self._income_sum().label("income"),
+            func.count(Transaction.id).label("transaction_count"),
+        )
+        q = self._apply_read_filters(
+            q,
+            user_id=user_id,
+            date_from=date_from,
+            date_to=date_to,
+            transaction_type=transaction_type,
+            category_key=category_key,
+        )
+        rows = q.group_by(period_expr).order_by(period_expr.asc()).all()
+
+        return [
+            {
+                "period": row.period,
+                "income": float(row.income or 0),
+                "expense": float(row.expense or 0),
+                "balance": float(row.income or 0) - float(row.expense or 0),
+                "transaction_count": row.transaction_count or 0,
+            }
+            for row in rows
+        ]
+
     def _apply_read_filters(
         self,
         q,
         user_id: Optional[UUID] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
     ):
         if user_id is not None:
             q = q.filter(Transaction.user_id == user_id)
@@ -102,6 +210,10 @@ class TransactionRepository:
             q = q.filter(Transaction.date >= date_from)
         if date_to is not None:
             q = q.filter(Transaction.date <= date_to)
+        if transaction_type is not None:
+            q = q.filter(self._normalized_transaction_type() == transaction_type)
+        if category_key is not None:
+            q = q.filter(Transaction.category_key == category_key)
         return q
 
     def _expense_sum(self):
@@ -128,6 +240,13 @@ class TransactionRepository:
 
     def _normalized_transaction_type(self):
         return func.lower(func.trim(Transaction.transaction_type))
+
+    def _period_expression(self, group_by: str):
+        if group_by == "month":
+            return func.to_char(Transaction.date, "YYYY-MM")
+        if group_by == "week":
+            return func.to_char(func.date_trunc("week", Transaction.date), "YYYY-MM-DD")
+        return func.to_char(Transaction.date, "YYYY-MM-DD")
 
     def get(self, txn_id: UUID):
         return self.db.query(Transaction).get(txn_id)

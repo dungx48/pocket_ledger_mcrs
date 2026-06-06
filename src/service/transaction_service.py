@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import date
 from typing import Optional
 from src.repository.transaction_repository import TransactionRepository
-from src.schemas import TransactionCreate
+from src.schemas import TransactionCreate, normalize_transaction_type
 from src.schemas import UserRead
 
 class TransactionService:
@@ -24,6 +24,81 @@ class TransactionService:
         if current_user.is_admin:
             return self.repo.weekly_summary(date_from=date_from, date_to=date_to)
         return self.repo.weekly_summary(date_from=date_from, date_to=date_to, user_id=current_user.id)
+
+    def analytics_overview(
+        self,
+        current_user: UserRead,
+        date_from: date,
+        date_to: date,
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        normalized_type = normalize_transaction_type(transaction_type) if transaction_type else None
+        if current_user.is_admin:
+            return self.repo.analytics_overview(
+                date_from=date_from,
+                date_to=date_to,
+                transaction_type=normalized_type,
+                category_key=category_key,
+            )
+        return self.repo.analytics_overview(
+            date_from=date_from,
+            date_to=date_to,
+            user_id=current_user.id,
+            transaction_type=normalized_type,
+            category_key=category_key,
+        )
+
+    def analytics_by_category(
+        self,
+        current_user: UserRead,
+        date_from: date,
+        date_to: date,
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        normalized_type = normalize_transaction_type(transaction_type) if transaction_type else None
+        if current_user.is_admin:
+            return self.repo.analytics_by_category(
+                date_from=date_from,
+                date_to=date_to,
+                transaction_type=normalized_type,
+                category_key=category_key,
+            )
+        return self.repo.analytics_by_category(
+            date_from=date_from,
+            date_to=date_to,
+            user_id=current_user.id,
+            transaction_type=normalized_type,
+            category_key=category_key,
+        )
+
+    def analytics_timeseries(
+        self,
+        current_user: UserRead,
+        date_from: date,
+        date_to: date,
+        group_by: str = "day",
+        transaction_type: Optional[str] = None,
+        category_key: Optional[str] = None,
+    ):
+        normalized_type = normalize_transaction_type(transaction_type) if transaction_type else None
+        if current_user.is_admin:
+            return self.repo.analytics_timeseries(
+                date_from=date_from,
+                date_to=date_to,
+                group_by=group_by,
+                transaction_type=normalized_type,
+                category_key=category_key,
+            )
+        return self.repo.analytics_timeseries(
+            date_from=date_from,
+            date_to=date_to,
+            user_id=current_user.id,
+            group_by=group_by,
+            transaction_type=normalized_type,
+            category_key=category_key,
+        )
 
     def create_transaction(self, data: TransactionCreate, current_user: UserRead):
         return self.repo.create(data, user_id=current_user.id)
